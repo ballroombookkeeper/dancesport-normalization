@@ -19,6 +19,24 @@ _danceCodeToDance = {
     # Swing/Samba, Mambo/Merengue, Peabody/Paso/Polka overlap - need special logic
 }
 
+_danceCodeInStyleDance = {
+    Style.Rhythm: {
+        'S': Dance.Swing,
+        'M': Dance.Mambo,
+        'B': Dance.Bolero
+    },
+    Style.Smooth: {
+        'P': Dance.Peabody
+    },
+    Style.Latin: {
+        'P': Dance.PasoDoble,
+        'S': Dance.Samba
+    },
+    Style.Standard: {
+
+    }
+}
+
 _danceNameToDance = {
     'waltz': Dance.Waltz,
     'tango': Dance.Tango,
@@ -38,10 +56,14 @@ _danceNameToDance = {
     'merengue': Dance.Merengue
 }
 
-def _getDanceFromCode(code: str, context: str = None) -> Dance:
+def _getDanceFromCode(code: str, fullEventName: str = None) -> Dance:
     upperCode = code.upper()
     if upperCode in _danceCodeToDance:
         return _danceCodeToDance[upperCode]
+
+    style = getStyle(fullEventName)
+    if style in _danceCodeInStyleDance and upperCode in _danceCodeInStyleDance[style]:
+        return _danceCodeInStyleDance[style][upperCode]
 
     return None
 
@@ -71,7 +93,7 @@ def getDances(input: str) -> List[Dance]:
     danceChars = lastParenthetical.group(1)
     numDances = len(danceChars)
 
-    if numDances == 1:
+    if numDances == 1 and len(tokens) >= 3:
         danceName = tokens[-2]
         potentialViennese = tokens[-3]
         potentialDance = _getDance(danceName)
@@ -79,7 +101,7 @@ def getDances(input: str) -> List[Dance]:
             return [Dance.VienneseWaltz]
         return [potentialDance]
 
-    dances = [_getDanceFromCode(code) for code in danceChars]
+    dances = [_getDanceFromCode(code, lowerInput) for code in danceChars]
     if None in dances:
         return None
 
@@ -87,4 +109,21 @@ def getDances(input: str) -> List[Dance]:
 
 def getStyle(input: str) -> Style:
     """ Gets corresponding Style from input """
+    lowerInput = input.lower().replace('.', '')
+
+    if 'rhythm' in lowerInput:
+        return Style.Rhythm
+
+    if 'smooth' in lowerInput:
+        return Style.Smooth
+
+    if 'standard' in lowerInput:
+        return Style.Standard
+
+    if 'latin' in lowerInput:
+        return Style.Latin
+
+    # TODO: Handle "Am" and "Intl"
+
+
     return None

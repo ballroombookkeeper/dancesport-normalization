@@ -12,7 +12,8 @@ class TestNormalizer(unittest.TestCase):
         waltzStrings = [
             'Waltz',
             ' Waltz',
-            'waltz'
+            'waltz',
+            'american smooth (w)'
         ]
 
         notWaltzStrings = [
@@ -32,9 +33,10 @@ class TestNormalizer(unittest.TestCase):
                 self.assertNotEqual(dances[0], Dance.Waltz)
 
     def test_getDance_allEventSetNoneNone(self):
-        print(ALL_EVENT_FILE)
         with open(ALL_EVENT_FILE, 'r') as allEvents:
             for line in allEvents:
+                if line.startswith('###'):
+                    continue
                 self.assertIsNotNone(getDances(line), line)
 
 if __name__ == '__main__':
