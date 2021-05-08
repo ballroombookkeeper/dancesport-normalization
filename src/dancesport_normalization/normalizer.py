@@ -1,7 +1,10 @@
 import re
+from collections import namedtuple
 from typing import List
 
-from dancesport_normalization.enums import Dance, Style
+from dancesport_normalization.enums import Dance, Style, SuperStyle
+
+EventInfo = namedtuple('EventInfo', ['name', 'dances', 'style', 'superStyle'])
 
 _danceCodeToDance = {
     'W': Dance.Waltz,
@@ -15,7 +18,8 @@ _danceCodeToDance = {
     'J': Dance.Jive,
     'H': Dance.Hustle,
     '#': Dance.Showdance,
-    '2': Dance.TwoStep
+    '2': Dance.TwoStep,
+    '_': Dance.Other
     # Swing/Samba, Mambo/Merengue, Peabody/Paso/Polka overlap - need special logic
 }
 
@@ -34,6 +38,19 @@ _danceCodeInStyleDance = {
     },
     Style.Standard: {
 
+    }
+}
+
+_danceCodeInSuperStyleDance = {
+    SuperStyle.American: {
+        'S': Dance.Swing,
+        'M': Dance.Mambo,
+        'B': Dance.Bolero,
+        'P': Dance.Peabody
+    },
+    SuperStyle.International: {
+        'P': Dance.PasoDoble,
+        'S': Dance.Samba
     }
 }
 
@@ -56,14 +73,13 @@ _danceNameToDance = {
     'merengue': Dance.Merengue
 }
 
-def _getDanceFromCode(code: str, fullEventName: str = None) -> Dance:
+def _getDanceFromCode(code: str, superStyle: SuperStyle = None) -> Dance:
     upperCode = code.upper()
     if upperCode in _danceCodeToDance:
         return _danceCodeToDance[upperCode]
 
-    style = getStyle(fullEventName)
-    if style in _danceCodeInStyleDance and upperCode in _danceCodeInStyleDance[style]:
-        return _danceCodeInStyleDance[style][upperCode]
+    if superStyle is not None and superStyle in _danceCodeInSuperStyleDance and upperCode in _danceCodeInSuperStyleDance[superStyle]:
+        return _danceCodeInSuperStyleDance[superStyle][upperCode]
 
     return None
 
@@ -84,6 +100,7 @@ def getDances(input: str) -> List[Dance]:
     lowerInput = input.lower().replace('.', '')
     tokens = lowerInput.split(' ')
 
+    # Check for dance codes at end
     lastParenthetical = re.match(r'\((.*)\)', tokens[-1])
     if not lastParenthetical:
         nonCodeResults = _getDance(input)
@@ -93,7 +110,14 @@ def getDances(input: str) -> List[Dance]:
     danceChars = lastParenthetical.group(1)
     numDances = len(danceChars)
 
+    superStyle = getSuperStyle(input)
+
+    # If only one dance code, attempt to get dance from code, else part it from event name
     if numDances == 1 and len(tokens) >= 3:
+        dance = _getDanceFromCode(danceChars, superStyle)
+        if dance is not None:
+            return [dance]
+
         danceName = tokens[-2]
         potentialViennese = tokens[-3]
         potentialDance = _getDance(danceName)
@@ -101,11 +125,24 @@ def getDances(input: str) -> List[Dance]:
             return [Dance.VienneseWaltz]
         return [potentialDance]
 
-    dances = [_getDanceFromCode(code, lowerInput) for code in danceChars]
+    # Get dances from codes
+    dances = [_getDanceFromCode(code, superStyle) for code in danceChars]
     if None in dances:
         return None
 
     return dances
+
+def getSuperStyle(input: str) -> SuperStyle:
+    """ Gets corresponding SuperStyle from input """
+    lowerInput = input.lower()
+
+    if any([substr in lowerInput for substr in ['nine dance', 'american', 'am.', 'rhythm', 'smooth']]):
+        return SuperStyle.American
+
+    if any([substr in lowerInput for substr in ['ten dance', 'international', 'intl.', 'standard', 'latin']]):
+        return SuperStyle.International
+
+    return None
 
 def getStyle(input: str) -> Style:
     """ Gets corresponding Style from input """
@@ -124,6 +161,15 @@ def getStyle(input: str) -> Style:
         return Style.Latin
 
     # TODO: Handle "Am" and "Intl"
-
+    tokens = lowerInput.split(' ')
+    if len(tokens) > 3:
+        pass
 
     return None
+
+def getEventInfo(input: str) -> EventInfo:
+    name = input
+    dances = getDances(input)
+    superStyle = getSuperStyle(input)
+    style = getStyle(input)
+    return EventInfo(name, dances, style, superStyle)

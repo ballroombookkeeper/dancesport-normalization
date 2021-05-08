@@ -20,15 +20,22 @@ class Dance(Enum):
     Hustle = 'H'
     Merengue = 'Me'
     Polka = 'Pk'
+    Lindy = 'L'
 
     Showdance = '#'
     TwoStep = '2'
+
+    Other = '_'
     
 class Style(Enum):
     Smooth = 1
     Standard = 2
     Rhythm = 3
     Latin = 4
+
+class SuperStyle(Enum):
+    American = 1
+    International = 2
 
 class Level(Enum):
     Newcomer = 1
