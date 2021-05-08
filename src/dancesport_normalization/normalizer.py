@@ -19,38 +19,36 @@ _danceCodeToDance = {
     'H': Dance.Hustle,
     '#': Dance.Showdance,
     '2': Dance.TwoStep,
-    '_': Dance.Other
+    'N': Dance.NightclubTwoStep,
+    '_': Dance.Other,
+    'E': Dance.Other
     # Swing/Samba, Mambo/Merengue, Peabody/Paso/Polka overlap - need special logic
-}
-
-_danceCodeInStyleDance = {
-    Style.Rhythm: {
-        'S': Dance.Swing,
-        'M': Dance.Mambo,
-        'B': Dance.Bolero
-    },
-    Style.Smooth: {
-        'P': Dance.Peabody
-    },
-    Style.Latin: {
-        'P': Dance.PasoDoble,
-        'S': Dance.Samba
-    },
-    Style.Standard: {
-
-    }
 }
 
 _danceCodeInSuperStyleDance = {
     SuperStyle.American: {
+        'W': Dance.Waltz,
+        'T': Dance.Tango,
+        'F': Dance.Foxtrot,
+        'V': Dance.VienneseWaltz,
+        'P': Dance.Peabody,
+        'C': Dance.ChaCha,
+        'R': Dance.Rumba,
         'S': Dance.Swing,
         'M': Dance.Mambo,
-        'B': Dance.Bolero,
-        'P': Dance.Peabody
+        'B': Dance.Bolero
     },
     SuperStyle.International: {
+        'W': Dance.Waltz,
+        'T': Dance.Tango,
+        'F': Dance.Foxtrot,
+        'V': Dance.VienneseWaltz,
+        'Q': Dance.Quickstep,
+        'S': Dance.Samba,
+        'C': Dance.ChaCha,
+        'R': Dance.Rumba,
         'P': Dance.PasoDoble,
-        'S': Dance.Samba
+        'J': Dance.Jive
     }
 }
 
@@ -73,6 +71,16 @@ _danceNameToDance = {
     'merengue': Dance.Merengue
 }
 
+def _getDanceCodes(eventString: str) -> str:
+    lowerInput = eventString.lower().replace('.', '')
+    tokens = lowerInput.split(' ')
+
+    # Check for dance codes at end
+    lastParenthetical = re.match(r'\((.*)\)', tokens[-1])
+    if lastParenthetical:
+        return lastParenthetical.group(1)
+    return None
+
 def _getDanceFromCode(code: str, superStyle: SuperStyle = None) -> Dance:
     upperCode = code.upper()
     if upperCode in _danceCodeToDance:
@@ -83,34 +91,35 @@ def _getDanceFromCode(code: str, superStyle: SuperStyle = None) -> Dance:
 
     return None
 
-def _getDance(input: str) -> Dance:
-    """ Gets corresponding Dance from input """
-    lowerInput = input.strip().lower().replace('.', '')
+def _getDance(eventString: str) -> Dance:
+    """ Gets corresponding Dance from eventString """
+    lowerEventString = eventString.strip().lower().replace('.', '')
 
-    if 'v waltz' in lowerInput or 'viennese waltz' in lowerInput:
+    if 'v waltz' in lowerEventString or 'viennese waltz' in lowerEventString:
         return Dance.VienneseWaltz
 
-    if lowerInput in _danceNameToDance:
-        return _danceNameToDance[lowerInput]
+    if lowerEventString in _danceNameToDance:
+        return _danceNameToDance[lowerEventString]
 
     return None
 
-def getDances(input: str) -> List[Dance]:
-    """ Gets corresponding Dances from input """
-    lowerInput = input.lower().replace('.', '')
-    tokens = lowerInput.split(' ')
+def getDances(eventString: str) -> List[Dance]:
+    """ Gets corresponding Dances from eventString """
+    lowerEventString = eventString.lower().replace('.', '')
+    tokens = lowerEventString.split(' ')
+    danceChars = _getDanceCodes(lowerEventString)
 
     # Check for dance codes at end
     lastParenthetical = re.match(r'\((.*)\)', tokens[-1])
-    if not lastParenthetical:
-        nonCodeResults = _getDance(input)
+    if not danceChars:
+        nonCodeResults = _getDance(eventString)
         if nonCodeResults is None:
             return None
         return [nonCodeResults] # TODO: Weird case
-    danceChars = lastParenthetical.group(1)
+        
     numDances = len(danceChars)
 
-    superStyle = getSuperStyle(input)
+    superStyle = getSuperStyle(eventString)
 
     # If only one dance code, attempt to get dance from code, else part it from event name
     if numDances == 1 and len(tokens) >= 3:
@@ -132,44 +141,55 @@ def getDances(input: str) -> List[Dance]:
 
     return dances
 
-def getSuperStyle(input: str) -> SuperStyle:
+def getSuperStyle(eventString: str) -> SuperStyle:
     """ Gets corresponding SuperStyle from input """
-    lowerInput = input.lower()
+    lowerEventString = eventString.lower()
 
-    if any([substr in lowerInput for substr in ['nine dance', 'american', 'am.', 'rhythm', 'smooth']]):
+    if any([substr in lowerEventString for substr in ['nine dance', '9-dance', '9 dance', 'american', 'am.', 'rhythm', 'smooth']]):
         return SuperStyle.American
 
-    if any([substr in lowerInput for substr in ['ten dance', 'international', 'intl.', 'standard', 'latin']]):
+    if any([substr in lowerEventString for substr in ['ten dance', '10-dance', '10 dance', 'international', 'intl.', 'standard', 'latin']]):
         return SuperStyle.International
+
+    danceCodes = _getDanceCodes(eventString)
+
+    # This assumes all dances are the same super style - in the case of "Amateur Pre-Teen II Silver Multi-Dance (WFQSCR)" this may not be the case (Quickstep and Swing)
+    if danceCodes is not None:
+        superStyles = []
+        for superStyle in _danceCodeInSuperStyleDance:
+            if all([danceCode in _danceCodeInSuperStyleDance[superStyle] for danceCode in danceCodes.upper()]):
+                superStyles.append(superStyle)
+        if len(superStyles) == 1:
+            return superStyles[0]
 
     return None
 
-def getStyle(input: str) -> Style:
+def getStyle(eventString: str) -> Style:
     """ Gets corresponding Style from input """
-    lowerInput = input.lower().replace('.', '')
+    lowerEventString = eventString.lower().replace('.', '')
 
-    if 'rhythm' in lowerInput:
+    if 'rhythm' in lowerEventString:
         return Style.Rhythm
 
-    if 'smooth' in lowerInput:
+    if 'smooth' in lowerEventString:
         return Style.Smooth
 
-    if 'standard' in lowerInput:
+    if 'standard' in lowerEventString:
         return Style.Standard
 
-    if 'latin' in lowerInput:
+    if 'latin' in lowerEventString:
         return Style.Latin
 
     # TODO: Handle "Am" and "Intl"
-    tokens = lowerInput.split(' ')
+    tokens = lowerEventString.split(' ')
     if len(tokens) > 3:
         pass
 
     return None
 
-def getEventInfo(input: str) -> EventInfo:
-    name = input
-    dances = getDances(input)
-    superStyle = getSuperStyle(input)
-    style = getStyle(input)
+def getEventInfo(eventString: str) -> EventInfo:
+    name = eventString
+    dances = getDances(eventString)
+    superStyle = getSuperStyle(eventString)
+    style = getStyle(eventString)
     return EventInfo(name, dances, style, superStyle)

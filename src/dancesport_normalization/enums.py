@@ -24,6 +24,7 @@ class Dance(Enum):
 
     Showdance = '#'
     TwoStep = '2'
+    NightclubTwoStep = 'N'
 
     Other = '_'
     
@@ -36,6 +37,7 @@ class Style(Enum):
 class SuperStyle(Enum):
     American = 1
     International = 2
+    Nightclub = 3
 
 class Level(Enum):
     Newcomer = 1
